@@ -34,20 +34,8 @@ In Firestore, update rules to:
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can only access their own data and station data
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-    
-    // Station data accessible by station members
-    match /stations/{stationId} {
-      allow read, write: if request.auth != null && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.stationId == stationId;
-    }
-    
-    // Other collections follow similar pattern
-    match /{collection}/{document} {
+    // Allow authenticated users to read/write their own data
+    match /{document=**} {
       allow read, write: if request.auth != null;
     }
   }

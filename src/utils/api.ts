@@ -280,6 +280,7 @@ export const workerAPI = {
       id: workerRef.id,
       ...data,
       role: 'worker',
+      is_active: true,
       stationId: userData.stationId,
       createdAt: serverTimestamp()
     });
@@ -295,9 +296,9 @@ export const workerAPI = {
   toggleWorkerStatus: async (id: string) => {
     const workerDoc = await getDoc(doc(db, 'users', id));
     if (workerDoc.exists()) {
-      const currentStatus = workerDoc.data().status || 'active';
+      const currentActive = workerDoc.data().is_active !== false;
       await updateDoc(doc(db, 'users', id), {
-        status: currentStatus === 'active' ? 'inactive' : 'active'
+        is_active: !currentActive
       });
     }
     return { data: { success: true } };
