@@ -192,10 +192,10 @@ export const dutyAPI = {
     if (!user) throw new Error('Not authenticated');
     
     try {
+      // Try simple query first (no ordering)
       const q = query(
         collection(db, 'duties'),
-        where('workerId', '==', user.uid),
-        orderBy('startTime', 'desc')
+        where('workerId', '==', user.uid)
       );
       
       const snapshot = await getDocs(q);
@@ -204,26 +204,17 @@ export const dutyAPI = {
         ...doc.data()
       }));
       
+      // Sort in memory instead of Firestore
+      duties.sort((a, b) => {
+        const aTime = a.startTime?.toDate?.() || new Date(a.startTime || 0);
+        const bTime = b.startTime?.toDate?.() || new Date(b.startTime || 0);
+        return bTime.getTime() - aTime.getTime();
+      });
+      
       return { data: duties };
     } catch (error: any) {
       console.error('Error fetching duties:', error);
-      // If orderBy fails due to missing index, try without ordering
-      try {
-        const q = query(
-          collection(db, 'duties'),
-          where('workerId', '==', user.uid)
-        );
-        
-        const snapshot = await getDocs(q);
-        const duties = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        
-        return { data: duties };
-      } catch (fallbackError) {
-        throw fallbackError;
-      }
+      throw error;
     }
   },
   
