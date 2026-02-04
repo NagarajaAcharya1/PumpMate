@@ -190,11 +190,8 @@ export const dutyAPI = {
   getMyDuties: async () => {
     const user = auth.currentUser;
     if (!user) {
-      console.error('No authenticated user found');
-      throw new Error('Not authenticated');
+      return { data: [] };
     }
-    
-    console.log('Fetching duties for user:', user.uid);
     
     try {
       const q = query(
@@ -202,35 +199,16 @@ export const dutyAPI = {
         where('workerId', '==', user.uid)
       );
       
-      console.log('Executing Firestore query...');
       const snapshot = await getDocs(q);
-      console.log('Query result:', snapshot.size, 'documents found');
+      const duties = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
       
-      const duties = snapshot.docs.map(doc => {
-        const data = doc.data();
-        console.log('Duty document:', doc.id, data);
-        return {
-          id: doc.id,
-          ...data
-        };
-      });
-      
-      // Sort in memory
-      duties.sort((a, b) => {
-        const aTime = a.startTime?.toDate?.() || new Date(a.startTime || 0);
-        const bTime = b.startTime?.toDate?.() || new Date(b.startTime || 0);
-        return bTime.getTime() - aTime.getTime();
-      });
-      
-      console.log('Returning duties:', duties.length);
       return { data: duties };
     } catch (error: any) {
-      console.error('Detailed error fetching duties:', {
-        message: error.message,
-        code: error.code,
-        stack: error.stack
-      });
-      throw error;
+      console.error('Error fetching duties:', error);
+      return { data: [] };
     }
   },
   
