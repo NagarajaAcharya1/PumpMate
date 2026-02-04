@@ -140,7 +140,7 @@ export default function WorkerManagement({ station, token }: WorkerManagementPro
 
   const toggleWorkerStatus = async (workerId: string) => {
     try {
-      await workerAPI.toggleWorkerStatus(parseInt(workerId));
+      await workerAPI.toggleWorkerStatus(workerId);
       toast.success('Worker status updated');
       fetchWorkers();
     } catch (error) {
@@ -154,7 +154,7 @@ export default function WorkerManagement({ station, token }: WorkerManagementPro
     if (!confirmed) return;
 
     try {
-      await workerAPI.deleteWorker(parseInt(workerId));
+      await workerAPI.deleteWorker(workerId);
       toast.success('Worker removed');
       fetchWorkers();
     } catch (error) {
@@ -168,7 +168,7 @@ export default function WorkerManagement({ station, token }: WorkerManagementPro
     if (!confirmed) return;
 
     try {
-      await helperAPI.deleteHelper(parseInt(helperId));
+      await helperAPI.deleteHelper(helperId);
       toast.success('Helper removed');
       fetchWorkers();
     } catch (error) {
