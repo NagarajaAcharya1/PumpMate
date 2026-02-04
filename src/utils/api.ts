@@ -213,11 +213,18 @@ export const dutyAPI = {
   },
   
   getAllDuties: async () => {
-    const q = query(collection(db, 'duties'), orderBy('startTime', 'desc'));
-    const snapshot = await getDocs(q);
-    const duties = snapshot.docs.map(doc => doc.data());
-    
-    return { data: duties };
+    try {
+      const q = query(collection(db, 'duties'));
+      const snapshot = await getDocs(q);
+      const duties = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      return { data: duties };
+    } catch (error) {
+      console.error('Error fetching all duties:', error);
+      return { data: [] };
+    }
   }
 };
 
@@ -388,90 +395,117 @@ export const helperAPI = {
 export const dailySalesAPI = {
   getDailySales: async () => {
     const user = auth.currentUser;
-    if (!user) throw new Error('Not authenticated');
+    if (!user) return { data: [] };
     
-    const userDoc = await getDoc(doc(db, 'users', user.uid));
-    if (!userDoc.exists()) throw new Error('User not found');
-    
-    const userData = userDoc.data() as User;
-    const q = query(
-      collection(db, 'dailySales'),
-      where('stationId', '==', userData.stationId),
-      orderBy('date', 'desc')
-    );
-    
-    const snapshot = await getDocs(q);
-    const sales = snapshot.docs.map(doc => doc.data());
-    
-    return { data: sales };
+    try {
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (!userDoc.exists()) return { data: [] };
+      
+      const userData = userDoc.data() as User;
+      const q = query(
+        collection(db, 'dailySales'),
+        where('stationId', '==', userData.stationId)
+      );
+      
+      const snapshot = await getDocs(q);
+      const sales = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      return { data: sales };
+    } catch (error) {
+      console.error('Error fetching daily sales:', error);
+      return { data: [] };
+    }
   },
   
   createDailySales: async (data: any) => {
     const user = auth.currentUser;
     if (!user) throw new Error('Not authenticated');
     
-    const userDoc = await getDoc(doc(db, 'users', user.uid));
-    if (!userDoc.exists()) throw new Error('User not found');
-    
-    const userData = userDoc.data() as User;
-    
-    const salesRef = doc(collection(db, 'dailySales'));
-    await setDoc(salesRef, {
-      id: salesRef.id,
-      ...data,
-      stationId: userData.stationId,
-      createdAt: serverTimestamp()
-    });
-    
-    return { data: { id: salesRef.id } };
+    try {
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (!userDoc.exists()) throw new Error('User not found');
+      
+      const userData = userDoc.data() as User;
+      
+      const salesRef = doc(collection(db, 'dailySales'));
+      await setDoc(salesRef, {
+        id: salesRef.id,
+        ...data,
+        stationId: userData.stationId,
+        submittedBy: user.uid,
+        submittedByName: userData.name,
+        createdAt: serverTimestamp()
+      });
+      
+      return { data: { id: salesRef.id } };
+    } catch (error) {
+      console.error('Error creating daily sales:', error);
+      throw error;
+    }
   }
 };
 
 export const attendanceAPI = {
   getManualAttendance: async (date: string) => {
     const user = auth.currentUser;
-    if (!user) throw new Error('Not authenticated');
+    if (!user) return { data: [] };
     
-    const userDoc = await getDoc(doc(db, 'users', user.uid));
-    if (!userDoc.exists()) throw new Error('User not found');
-    
-    const userData = userDoc.data() as User;
-    const q = query(
-      collection(db, 'attendance'),
-      where('stationId', '==', userData.stationId),
-      where('date', '==', date)
-    );
-    
-    const snapshot = await getDocs(q);
-    const attendance = snapshot.docs.map(doc => doc.data());
-    
-    return { data: attendance };
+    try {
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (!userDoc.exists()) return { data: [] };
+      
+      const userData = userDoc.data() as User;
+      const q = query(
+        collection(db, 'attendance'),
+        where('stationId', '==', userData.stationId),
+        where('date', '==', date)
+      );
+      
+      const snapshot = await getDocs(q);
+      const attendance = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      return { data: attendance };
+    } catch (error) {
+      console.error('Error fetching attendance:', error);
+      return { data: [] };
+    }
   },
   
   saveManualAttendance: async (date: string, attendance: any[]) => {
     const user = auth.currentUser;
     if (!user) throw new Error('Not authenticated');
     
-    const userDoc = await getDoc(doc(db, 'users', user.uid));
-    if (!userDoc.exists()) throw new Error('User not found');
-    
-    const userData = userDoc.data() as User;
-    
-    const batch = writeBatch(db);
-    
-    attendance.forEach((record) => {
-      const attendanceRef = doc(collection(db, 'attendance'));
-      batch.set(attendanceRef, {
-        id: attendanceRef.id,
-        ...record,
-        date,
-        stationId: userData.stationId,
-        createdAt: serverTimestamp()
+    try {
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (!userDoc.exists()) throw new Error('User not found');
+      
+      const userData = userDoc.data() as User;
+      
+      const batch = writeBatch(db);
+      
+      attendance.forEach((record) => {
+        const attendanceRef = doc(collection(db, 'attendance'));
+        batch.set(attendanceRef, {
+          id: attendanceRef.id,
+          ...record,
+          date,
+          stationId: userData.stationId,
+          createdAt: serverTimestamp()
+        });
       });
-    });
-    
-    await batch.commit();
-    return { data: { success: true } };
+      
+      await batch.commit();
+      return { data: { success: true } };
+    } catch (error) {
+      console.error('Error saving attendance:', error);
+      throw error;
+    }
   }
 };
 
