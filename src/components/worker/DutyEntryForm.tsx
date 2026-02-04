@@ -106,7 +106,7 @@ export default function DutyEntryForm({ user, station, token, onBack }: DutyEntr
     const creditAmount = parseFloat(payments.credit) || 0;
     const testingAmount = parseFloat(payments.testing) || 0;
     
-    const totalReceived = cashAmount + cardAmount + onlineAmount + creditAmount - testingAmount;
+    const totalReceived = cashAmount + cardAmount + onlineAmount + creditAmount + testingAmount;
     const difference = totalReceived - totalSales;
     
     return {
@@ -289,7 +289,7 @@ export default function DutyEntryForm({ user, station, token, onBack }: DutyEntr
               </div>
               <div className="flex justify-between text-sm">
                 <span>Testing Fuel</span>
-                <span className="font-bold text-red-600">-₹{totals.testingAmount.toFixed(2)}</span>
+                <span className="font-bold">₹{totals.testingAmount.toFixed(2)}</span>
               </div>
               <div className="flex justify-between pt-3 border-t">
                 <span className="font-semibold">Total Received</span>

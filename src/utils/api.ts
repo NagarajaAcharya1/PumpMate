@@ -191,16 +191,40 @@ export const dutyAPI = {
     const user = auth.currentUser;
     if (!user) throw new Error('Not authenticated');
     
-    const q = query(
-      collection(db, 'duties'),
-      where('workerId', '==', user.uid),
-      orderBy('startTime', 'desc')
-    );
-    
-    const snapshot = await getDocs(q);
-    const duties = snapshot.docs.map(doc => doc.data());
-    
-    return { data: duties };
+    try {
+      const q = query(
+        collection(db, 'duties'),
+        where('workerId', '==', user.uid),
+        orderBy('startTime', 'desc')
+      );
+      
+      const snapshot = await getDocs(q);
+      const duties = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      return { data: duties };
+    } catch (error: any) {
+      console.error('Error fetching duties:', error);
+      // If orderBy fails due to missing index, try without ordering
+      try {
+        const q = query(
+          collection(db, 'duties'),
+          where('workerId', '==', user.uid)
+        );
+        
+        const snapshot = await getDocs(q);
+        const duties = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        
+        return { data: duties };
+      } catch (fallbackError) {
+        throw fallbackError;
+      }
+    }
   },
   
   getAllDuties: async () => {
