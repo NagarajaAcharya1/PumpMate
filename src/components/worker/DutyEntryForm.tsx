@@ -24,6 +24,7 @@ interface Pump {
   closing: string;
   liters: number;
   amount: number;
+  pricePerLiter: number;
 }
 
 export default function DutyEntryForm({ user, station, token, onBack }: DutyEntryFormProps) {
@@ -36,6 +37,7 @@ export default function DutyEntryForm({ user, station, token, onBack }: DutyEntr
       closing: '',
       liters: 0,
       amount: 0,
+      pricePerLiter: station.prices.petrol,
     }
   ]);
 
@@ -61,6 +63,7 @@ export default function DutyEntryForm({ user, station, token, onBack }: DutyEntr
         closing: '',
         liters: 0,
         amount: 0,
+        pricePerLiter: station.prices.petrol,
       }
     ]);
   };
@@ -80,10 +83,14 @@ export default function DutyEntryForm({ user, station, token, onBack }: DutyEntr
         if (field === 'opening' || field === 'closing' || field === 'fuelType') {
           const opening = parseFloat(field === 'opening' ? value : updated.opening) || 0;
           const closing = parseFloat(field === 'closing' ? value : updated.closing) || 0;
-          updated.liters = Math.max(0, closing - opening);
+          updated.liters = Number(Math.max(0, closing - opening).toFixed(3));
           
-          const price = updated.fuelType === 'Petrol' ? station.prices.petrol : station.prices.diesel;
-          updated.amount = updated.liters * price;
+          // Lock price when fuel type changes
+          if (field === 'fuelType') {
+            updated.pricePerLiter = updated.fuelType === 'Petrol' ? station.prices.petrol : station.prices.diesel;
+          }
+          
+          updated.amount = Number((updated.liters * updated.pricePerLiter).toFixed(2));
         }
         
         return updated;
@@ -96,18 +103,18 @@ export default function DutyEntryForm({ user, station, token, onBack }: DutyEntr
     const petrolPumps = pumps.filter(p => p.fuelType === 'Petrol');
     const dieselPumps = pumps.filter(p => p.fuelType === 'Diesel');
     
-    const petrolTotal = petrolPumps.reduce((sum, p) => sum + p.amount, 0);
-    const dieselTotal = dieselPumps.reduce((sum, p) => sum + p.amount, 0);
-    const totalSales = petrolTotal + dieselTotal;
+    const petrolTotal = Number(petrolPumps.reduce((sum, p) => sum + p.amount, 0).toFixed(2));
+    const dieselTotal = Number(dieselPumps.reduce((sum, p) => sum + p.amount, 0).toFixed(2));
+    const totalSales = Number((petrolTotal + dieselTotal).toFixed(2));
     
-    const cashAmount = parseFloat(payments.cash) || 0;
-    const cardAmount = parseFloat(payments.card) || 0;
-    const onlineAmount = parseFloat(payments.online) || 0;
-    const creditAmount = parseFloat(payments.credit) || 0;
-    const testingAmount = parseFloat(payments.testing) || 0;
+    const cashAmount = Number((parseFloat(payments.cash) || 0).toFixed(2));
+    const cardAmount = Number((parseFloat(payments.card) || 0).toFixed(2));
+    const onlineAmount = Number((parseFloat(payments.online) || 0).toFixed(2));
+    const creditAmount = Number((parseFloat(payments.credit) || 0).toFixed(2));
+    const testingAmount = Number((parseFloat(payments.testing) || 0).toFixed(2));
     
-    const totalReceived = cashAmount + cardAmount + onlineAmount + creditAmount + testingAmount;
-    const difference = totalReceived - totalSales;
+    const totalReceived = Number((cashAmount + cardAmount + onlineAmount + creditAmount + testingAmount).toFixed(2));
+    const difference = Number((totalReceived - totalSales).toFixed(2));
     
     return {
       petrolTotal,
@@ -151,6 +158,16 @@ export default function DutyEntryForm({ user, station, token, onBack }: DutyEntr
 
   const handlePreview = () => {
     if (validateForm()) {
+      const totals = calculateTotals();
+      
+      // Validate settlement difference
+      if (Math.abs(totals.difference) > 100) {
+        const confirmed = window.confirm(
+          `Large settlement difference detected: ₹${Math.abs(totals.difference).toFixed(2)} ${totals.difference < 0 ? 'shortage' : 'excess'}. Continue?`
+        );
+        if (!confirmed) return;
+      }
+      
       setShowSummary(true);
     }
   };
@@ -169,6 +186,7 @@ export default function DutyEntryForm({ user, station, token, onBack }: DutyEntr
         closing: parseFloat(p.closing),
         liters: p.liters,
         amount: p.amount,
+        pricePerLiter: p.pricePerLiter,
         total_amount: p.amount
       }));
 
@@ -182,7 +200,10 @@ export default function DutyEntryForm({ user, station, token, onBack }: DutyEntr
 
       await dutyAPI.endDuty(dutyId, {
         pump_readings: pumpReadings,
-        cash_collected: totals.totalReceived,
+        cash_collected: totals.cashAmount,
+        total_received: totals.totalReceived,
+        total_sales: totals.totalSales,
+        difference: totals.difference,
         notes: JSON.stringify({
           date: today,
           payments,
