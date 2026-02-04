@@ -35,6 +35,7 @@ export default function WorkerDashboard({ user, station, token, onLogout }: Work
       setTodayDutySubmitted(hasTodayDuty);
     } catch (error) {
       console.error('Error checking today duty:', error);
+      setTodayDutySubmitted(false);
     }
   };
 
