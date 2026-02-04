@@ -116,6 +116,14 @@ export default function WorkerManagement({ station, token }: WorkerManagementPro
         });
 
         console.log('Worker creation response:', response.data);
+        
+        if (response.data.needsReauth) {
+          // Admin was logged out during worker creation, need to re-login
+          toast.success('Worker created! Please log in again.');
+          window.location.href = '/login';
+          return;
+        }
+        
         toast.success('Worker created successfully!');
       }
 

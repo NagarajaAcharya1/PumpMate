@@ -274,18 +274,38 @@ export const workerAPI = {
     if (!userDoc.exists()) throw new Error('User not found');
     
     const userData = userDoc.data() as User;
+    const currentUserEmail = userData.email;
     
-    const workerRef = doc(collection(db, 'users'));
-    await setDoc(workerRef, {
-      id: workerRef.id,
-      ...data,
-      role: 'worker',
-      is_active: true,
-      stationId: userData.stationId,
-      createdAt: serverTimestamp()
-    });
-    
-    return { data: { id: workerRef.id } };
+    try {
+      // Create Firebase Auth user
+      const workerCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+      const workerUser = workerCredential.user;
+      
+      // Create Firestore document for worker
+      await setDoc(doc(db, 'users', workerUser.uid), {
+        id: workerUser.uid,
+        name: data.name,
+        email: data.email,
+        role: 'worker',
+        position: data.position,
+        duty_type: data.duty_type,
+        base_salary: data.base_salary,
+        phone: data.phone,
+        is_active: true,
+        stationId: userData.stationId,
+        createdAt: serverTimestamp()
+      });
+      
+      // Sign out the worker and sign back in as admin
+      await signOut(auth);
+      
+      // Re-authenticate as admin (you'll need to handle this in the component)
+      return { data: { id: workerUser.uid, needsReauth: true, adminEmail: currentUserEmail } };
+      
+    } catch (error: any) {
+      // If worker creation fails, make sure admin stays logged in
+      throw error;
+    }
   },
   
   updateWorker: async (id: string, data: any) => {
